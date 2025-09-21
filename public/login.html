@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng nhập - Hệ thống theo dõi sức khỏe</title>
+    <link rel="stylesheet" href="login.css" />
+  </head>
+  <body class="login-page">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <img src="/asset/icon/login2.png" alt="Logo y tế" class="logo" />
+          <h2>Hệ thống theo dõi sức khỏe</h2>
+          <p>Đăng nhập để tiếp tục</p>
+        </div>
+
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="Nhập email" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Mật khẩu:</label>
+            <input
+              type="password"
+              id="password"
+              placeholder="Nhập mật khẩu"
+              required
+            />
+          </div>
+          <button type="submit" class="btn">Đăng nhập</button>
+        </form>
+        <div id="errorMessage" class="error-message"></div>
+      </div>
+    </div>
+    <!-- Config & Auth -->
+    <script type="module" src="./auth.js"></script>
+  </body>
+</html>
