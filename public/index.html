@@ -76,7 +76,92 @@
           <span class="material-icons">edit</span> Cập nhật
         </button>
       </section>
+      <section class="profile-edit-section" id="profileEditSection">
+        <h2>Cập nhật thông tin cá nhân</h2>
 
+        <form id="profileEditForm" class="profile-form" autocomplete="off">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editName">Họ tên</label>
+              <input
+                type="text"
+                id="editName"
+                placeholder="Nhập họ tên"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="editAge">Tuổi</label>
+              <input
+                type="number"
+                id="editAge"
+                min="1"
+                max="120"
+                placeholder="VD: 32"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editGender">Giới tính</label>
+              <select id="editGender" required>
+                <option value="">-- Chọn --</option>
+                <option>Nam</option>
+                <option>Nữ</option>
+                <option>Khác</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="editHeight">Chiều cao (cm)</label>
+              <input
+                type="number"
+                id="editHeight"
+                min="50"
+                max="250"
+                placeholder="VD: 170"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editWeight">Cân nặng (kg)</label>
+              <input
+                type="number"
+                id="editWeight"
+                step="0.1"
+                min="10"
+                max="300"
+                placeholder="VD: 68"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="editAvatar">Ảnh đại diện (URL)</label>
+              <input
+                type="url"
+                id="editAvatar"
+                placeholder="https://... (tuỳ chọn)"
+              />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="cancelEditBtn" class="btn-outline">
+              Hủy
+            </button>
+            <button type="submit" class="btn-primary">
+              <span class="material-icons" style="vertical-align: middle"
+                >save</span
+              >
+              Lưu thay đổi
+            </button>
+          </div>
+        </form>
+      </section>
       <section class="alert-section" id="alertSection" style="display: none">
         <span class="material-icons alert-icon">warning</span>
         <span id="alertMessage"></span>
@@ -144,15 +229,7 @@
 
         <div class="notes-header">
           <h3 style="margin: 0">Nhật ký đã lưu</h3>
-          <div class="notes-actions">
-            <button
-              id="clearNotesBtn"
-              class="btn-clear-notes"
-              title="Xóa toàn bộ nhật ký"
-            >
-              Xóa tất cả
-            </button>
-          </div>
+          <div class="notes-actions"></div>
         </div>
 
         <ul id="noteList" class="notes-list" aria-live="polite"></ul>

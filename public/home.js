@@ -154,13 +154,12 @@ function renderChart() {
 }
 
 // Nhật ký sức khỏe
-// ===== Nhật ký sức khỏe: Lưu + Xem + Xóa =====
+// ===== Nhật ký sức khỏe: Lưu + Xem (KHÔNG XOÁ) =====
 function setupNote() {
   const textarea = document.getElementById("healthNote");
   const saveBtn = document.getElementById("saveNoteBtn");
   const msg = document.getElementById("noteSavedMsg");
   const noteList = document.getElementById("noteList");
-  const clearBtn = document.getElementById("clearNotesBtn");
 
   const KEY_SINGLE = "healthNote";     // key cũ (1 ghi chú)
   const KEY_ARRAY  = "healthNotes";    // key mới (danh sách ghi chú)
@@ -201,6 +200,12 @@ function setupNote() {
     return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
+  const escapeHtml = (s) =>
+    (s || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+
   const renderNotes = () => {
     const notes = loadNotes().sort((a,b) => b.ts - a.ts); // mới nhất lên đầu
     noteList.innerHTML = "";
@@ -212,28 +217,17 @@ function setupNote() {
 
     notes.forEach(n => {
       const li = document.createElement("li");
+      li.className = "note-item";
       li.innerHTML = `
-        <div class="note-meta">
-          <span>🕒 ${fmt(n.ts)}</span>
-          <div class="note-actions">
-            <button class="btn-note" data-action="load" data-id="${n.id}" title="Tải vào ô nhập để chỉnh sửa">Nạp vào ô</button>
-            <button class="btn-note btn-delete" data-action="delete" data-id="${n.id}" title="Xóa ghi chú này">Xóa</button>
-          </div>
-        </div>
+        <div class="note-meta">🕒 ${fmt(n.ts)}</div>
         <div class="note-text">${escapeHtml(n.text || "")}</div>
       `;
+      // KHÔNG có nút xóa, KHÔNG có xóa tất cả
       noteList.appendChild(li);
     });
   };
 
-  // Escape cơ bản để hiển thị an toàn
-  const escapeHtml = (s) =>
-    (s || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
-
-  // --- Sự kiện: Lưu ghi chú mới (thêm vào danh sách) ---
+  // --- Sự kiện: Lưu ghi chú mới (có xác nhận) ---
   saveBtn.addEventListener("click", () => {
     const text = (textarea.value || "").trim();
     if (!text) {
@@ -242,6 +236,15 @@ function setupNote() {
       setTimeout(() => (msg.innerText = ""), 1800);
       return;
     }
+
+    const ok = confirm("Bạn có muốn lưu nhật ký này không?");
+    if (!ok) {
+      msg.innerText = "Đã hủy lưu nhật ký.";
+      msg.style.color = "#e65100";
+      setTimeout(() => (msg.innerText = ""), 1800);
+      return;
+    }
+
     const notes = loadNotes();
     notes.push({
       id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
@@ -249,44 +252,11 @@ function setupNote() {
       ts: Date.now()
     });
     saveNotes(notes);
-    textarea.value = ""; // clear ô nhập sau khi lưu
+
+    textarea.value = ""; // dọn ô nhập sau khi lưu
     msg.innerText = "Đã lưu nhật ký!";
     msg.style.color = "#43a047";
     setTimeout(() => (msg.innerText = ""), 1800);
-    renderNotes();
-  });
-
-  // --- Sự kiện: Click trên danh sách (nạp/xóa) ---
-  noteList.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-action]");
-    if (!btn) return;
-    const action = btn.getAttribute("data-action");
-    const id = btn.getAttribute("data-id");
-    const notes = loadNotes();
-
-    if (action === "delete") {
-      const next = notes.filter(n => n.id !== id);
-      saveNotes(next);
-      renderNotes();
-      return;
-    }
-
-    if (action === "load") {
-      const found = notes.find(n => n.id === id);
-      if (found) {
-        textarea.value = found.text || "";
-        // gợi ý: người dùng có thể sửa và bấm Lưu để tạo bản ghi mới
-      }
-    }
-  });
-
-  // --- Sự kiện: Xóa toàn bộ ---
-  clearBtn.addEventListener("click", () => {
-    const notes = loadNotes();
-    if (notes.length === 0) return;
-    const ok = confirm("Bạn có chắc muốn xóa TẤT CẢ nhật ký đã lưu?");
-    if (!ok) return;
-    localStorage.removeItem(KEY_ARRAY);
     renderNotes();
   });
 
@@ -327,6 +297,107 @@ function setupNavbar() {
     });
   });
 }
+// Cập nhật thông tin cá nhân bằng FORM (mở tab riêng)
+function setupEditProfile() {
+  const editBtn = document.getElementById("editProfileBtn");
+  const form = document.getElementById("profileEditForm");
+  const cancelBtn = document.getElementById("cancelEditBtn");
+
+  const sectionIds = ["profileSection","currentSection","historySection","chartSection","noteSection","profileEditSection"];
+
+  // Helper: bật 1 section theo id
+  const activateSection = (id) => {
+    sectionIds.forEach(sid => {
+      const sec = document.getElementById(sid);
+      if (!sec) return;
+      if (sid === id) sec.classList.add("active");
+      else sec.classList.remove("active");
+    });
+    // Đồng bộ trạng thái nút navbar
+    const navMap = {
+      navCurrent: "currentSection",
+      navHistory: "historySection",
+      navChart: "chartSection",
+      navNote: "noteSection",
+      navProfile: "profileSection"
+    };
+    Object.keys(navMap).forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      if (navMap[btnId] === id) btn.classList.add("active");
+      else btn.classList.remove("active");
+    });
+  };
+
+  // Khi bấm nút "Cập nhật" trong tab Cá nhân -> mở form & nạp dữ liệu
+  editBtn.addEventListener("click", () => {
+    // Nạp sẵn dữ liệu hiện có
+    document.getElementById("editName").value   = userProfile.name || "";
+    document.getElementById("editAge").value    = userProfile.age || "";
+    document.getElementById("editGender").value = userProfile.gender || "";
+    document.getElementById("editHeight").value = userProfile.height || "";
+    document.getElementById("editWeight").value = userProfile.weight || "";
+    document.getElementById("editAvatar").value = userProfile.avatar || "";
+
+    // Mở tab form
+    activateSection("profileEditSection");
+  });
+
+  // Nút HỦY -> quay về tab Cá nhân, không lưu
+  cancelBtn.addEventListener("click", () => {
+    activateSection("profileSection");
+  });
+
+  // Submit form -> validate, lưu vào userProfile, render lại, quay về tab Cá nhân
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const name   = document.getElementById("editName").value.trim();
+    const age    = parseInt(document.getElementById("editAge").value, 10);
+    const gender = document.getElementById("editGender").value.trim();
+    const height = parseFloat(document.getElementById("editHeight").value);
+    const weight = parseFloat(document.getElementById("editWeight").value);
+    const avatar = document.getElementById("editAvatar").value.trim();
+
+    // Ràng buộc tối thiểu
+    if (!name || !age || !gender || !height || !weight) {
+      alert("Vui lòng điền đầy đủ các trường bắt buộc.");
+      return;
+    }
+    if (age < 1 || age > 120) {
+      alert("Tuổi không hợp lệ (1-120).");
+      return;
+    }
+    if (height < 50 || height > 250) {
+      alert("Chiều cao không hợp lệ (50-250 cm).");
+      return;
+    }
+    if (weight < 10 || weight > 300) {
+      alert("Cân nặng không hợp lệ (10-300 kg).");
+      return;
+    }
+
+    // Lưu lại hồ sơ (demo: lưu trong biến userProfile)
+    userProfile.name = name;
+    userProfile.age = age;
+    userProfile.gender = gender;
+    userProfile.height = height;
+    userProfile.weight = weight;
+    if (avatar) userProfile.avatar = avatar;
+
+    // Render lại UI
+    renderProfile();  // cập nhật thẻ hồ sơ & BMI
+    // nếu muốn cập nhật lời chào trên navbar:
+    document.getElementById("userGreeting").innerText = `Xin chào, ${userProfile.name}!`;
+
+    // Quay về tab Cá nhân
+    activateSection("profileSection");
+
+    // Thông báo nhẹ
+    setTimeout(() => alert("Đã cập nhật thông tin cá nhân."), 0);
+  });
+}
+
 
 // Xử lý đăng nhập và render dữ liệu
 onAuthStateChanged(auth, (user) => {
