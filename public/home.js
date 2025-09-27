@@ -154,38 +154,146 @@ function renderChart() {
 }
 
 // Nhật ký sức khỏe
+// ===== Nhật ký sức khỏe: Lưu + Xem + Xóa =====
 function setupNote() {
-  const noteKey = "healthNote";
   const textarea = document.getElementById("healthNote");
   const saveBtn = document.getElementById("saveNoteBtn");
   const msg = document.getElementById("noteSavedMsg");
+  const noteList = document.getElementById("noteList");
+  const clearBtn = document.getElementById("clearNotesBtn");
 
-  // Load note
-  textarea.value = localStorage.getItem(noteKey) || "";
+  const KEY_SINGLE = "healthNote";     // key cũ (1 ghi chú)
+  const KEY_ARRAY  = "healthNotes";    // key mới (danh sách ghi chú)
 
+  // --- Migrate dữ liệu cũ (nếu có) sang mảng ---
+  try {
+    const old = localStorage.getItem(KEY_SINGLE);
+    const hasArray = localStorage.getItem(KEY_ARRAY);
+    if (old && !hasArray) {
+      const migrated = [{
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        text: old,
+        ts: Date.now()
+      }];
+      localStorage.setItem(KEY_ARRAY, JSON.stringify(migrated));
+      localStorage.removeItem(KEY_SINGLE);
+    }
+  } catch (_) { /* ignore */ }
+
+  // --- Helpers ---
+  const loadNotes = () => {
+    try {
+      const raw = localStorage.getItem(KEY_ARRAY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveNotes = (notes) => {
+    localStorage.setItem(KEY_ARRAY, JSON.stringify(notes));
+  };
+
+  const fmt = (ts) => {
+    // format thời gian: DD/MM/YYYY HH:mm
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const renderNotes = () => {
+    const notes = loadNotes().sort((a,b) => b.ts - a.ts); // mới nhất lên đầu
+    noteList.innerHTML = "";
+
+    if (notes.length === 0) {
+      noteList.innerHTML = `<li style="text-align:center;color:#777;">Chưa có nhật ký nào.</li>`;
+      return;
+    }
+
+    notes.forEach(n => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <div class="note-meta">
+          <span>🕒 ${fmt(n.ts)}</span>
+          <div class="note-actions">
+            <button class="btn-note" data-action="load" data-id="${n.id}" title="Tải vào ô nhập để chỉnh sửa">Nạp vào ô</button>
+            <button class="btn-note btn-delete" data-action="delete" data-id="${n.id}" title="Xóa ghi chú này">Xóa</button>
+          </div>
+        </div>
+        <div class="note-text">${escapeHtml(n.text || "")}</div>
+      `;
+      noteList.appendChild(li);
+    });
+  };
+
+  // Escape cơ bản để hiển thị an toàn
+  const escapeHtml = (s) =>
+    (s || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+
+  // --- Sự kiện: Lưu ghi chú mới (thêm vào danh sách) ---
   saveBtn.addEventListener("click", () => {
-    localStorage.setItem(noteKey, textarea.value);
+    const text = (textarea.value || "").trim();
+    if (!text) {
+      msg.innerText = "Vui lòng nhập nội dung trước khi lưu.";
+      msg.style.color = "#e65100";
+      setTimeout(() => (msg.innerText = ""), 1800);
+      return;
+    }
+    const notes = loadNotes();
+    notes.push({
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      text,
+      ts: Date.now()
+    });
+    saveNotes(notes);
+    textarea.value = ""; // clear ô nhập sau khi lưu
     msg.innerText = "Đã lưu nhật ký!";
-    setTimeout(() => msg.innerText = "", 2000);
+    msg.style.color = "#43a047";
+    setTimeout(() => (msg.innerText = ""), 1800);
+    renderNotes();
   });
+
+  // --- Sự kiện: Click trên danh sách (nạp/xóa) ---
+  noteList.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id");
+    const notes = loadNotes();
+
+    if (action === "delete") {
+      const next = notes.filter(n => n.id !== id);
+      saveNotes(next);
+      renderNotes();
+      return;
+    }
+
+    if (action === "load") {
+      const found = notes.find(n => n.id === id);
+      if (found) {
+        textarea.value = found.text || "";
+        // gợi ý: người dùng có thể sửa và bấm Lưu để tạo bản ghi mới
+      }
+    }
+  });
+
+  // --- Sự kiện: Xóa toàn bộ ---
+  clearBtn.addEventListener("click", () => {
+    const notes = loadNotes();
+    if (notes.length === 0) return;
+    const ok = confirm("Bạn có chắc muốn xóa TẤT CẢ nhật ký đã lưu?");
+    if (!ok) return;
+    localStorage.removeItem(KEY_ARRAY);
+    renderNotes();
+  });
+
+  // Hiển thị lần đầu
+  renderNotes();
 }
 
-// Cập nhật thông tin cá nhân (demo)
-function setupEditProfile() {
-  document.getElementById("editProfileBtn").addEventListener("click", () => {
-    const name = prompt("Nhập họ tên:", userProfile.name);
-    if (name) userProfile.name = name;
-    const age = prompt("Nhập tuổi:", userProfile.age);
-    if (age) userProfile.age = age;
-    const gender = prompt("Nhập giới tính:", userProfile.gender);
-    if (gender) userProfile.gender = gender;
-    const height = prompt("Nhập chiều cao (cm):", userProfile.height);
-    if (height) userProfile.height = height;
-    const weight = prompt("Nhập cân nặng (kg):", userProfile.weight);
-    if (weight) userProfile.weight = weight;
-    renderProfile();
-  });
-}
 
 // Đăng xuất
 document.getElementById("logoutBtn").addEventListener("click", () => {
